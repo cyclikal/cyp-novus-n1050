@@ -16,6 +16,10 @@ default_config = json.loads(
             {
               "port": "COM5",
               "meta": "PV"
+            },
+            {
+              "port": "COM5",
+              "meta": "SV"
             }
         ]
     }
