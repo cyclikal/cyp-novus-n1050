@@ -1,6 +1,6 @@
 import minimalmodbus
 # port name, slave address (in decimal)
-instrument = minimalmodbus.Instrument('COM6', 1)
+instrument = minimalmodbus.Instrument('COM5', 1)
 
 ## Read temperature (PV = ProcessValue, SV = SetValue) ##
 # Registernumber, number of decimals
