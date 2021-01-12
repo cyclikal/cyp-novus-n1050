@@ -31,21 +31,48 @@ To install, clone the github repository, change to the directory and install the
     python setup.py install
 
 #### Configuration
-After installing the plugin you must add configuration so that Cyckei can setup and use the plugin correctly.
+After installing the plugin you must add configurations so that Cyckei can setup and use the plugin correctly.
 To do so, add the following entry to the ``plugins`` list Cyckei's main ``config.json``.
 
     {
-        "name": "novus-n1050",
+        "name": "My Novus",
+        "module": "novus-n1050",
         "enabled": true,
         "sources": [
             {
               "port": "COM6",
-              "meta": null
+              "meta": "" 
             }
         ]
     }
 
-``port`` refers to the port of the serial interface that a given scale is connected to. ``meta`` can be left at ``null`` and is not currently referenced.
+``port`` refers to the port of the serial interface that a given scale is connected to. 
+``meta`` can be set as either `"PV"` or `"SV"` depending on whether you the PerceivedValue or user SetValue to be read by this device. If you want both to be read section of the the ``plugins`` list might look like this: 
+
+.....
+{
+        "name": "PV Novus",
+        "module": "novus-n1050",
+        "enabled": true,
+        "sources": [
+            {
+              "port": "COM6",
+              "meta": "PV" 
+            }
+        ]
+    },
+    {
+        "name": "SV Novus",
+        "module": "novus-n1050",
+        "enabled": true,
+        "sources": [
+            {
+              "port": "COM6",
+              "meta": "SV" 
+            }
+        ]
+    }
+....
 
 #### Usage
 Once installed and configured the sources specified on ``config.json`` should appear in the Cyckei client interface as dropdown options. A source can be assigned to any channel, and data from the plugin will be appended to the end of Cyckei's cycling data.

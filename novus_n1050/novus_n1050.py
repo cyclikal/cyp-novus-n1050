@@ -4,35 +4,50 @@ import time
 import json
 from cyckei.plugins import cyp_base
 
-# port name, slave address (in decimal)
-instrument = minimalmodbus.Instrument('COM5', 1)
+pv_config = json.loads(
+    """{
+      "name": "Novus N1050 PV",
+      "module": "novus_n1050",
+      "enabled": true,
+      "sources": [
+          {
+            "port": "COM5",
+            "meta": "PV"
+          }
+      ]
+    }"""
+)
 
-default_config = json.loads(
+sv_config = json.loads(
     """
     {
-        "name": "novus_n1050",
-        "enabled": true,
-        "sources": [
-            {
-              "port": "COM5",
-              "meta": "PV"
-            },
-            {
-              "port": "COM5",
-              "meta": "SV"
-            }
-        ]
+      "name": "Novus N1050 SV",
+      "module": "novus_n1050",
+      "enabled": true,
+      "sources": [
+          {
+            "port": "COM5",
+            "meta": "SV"
+          }
+      ]
     }
     """
 )
 
 class PluginController(cyp_base.BaseController):
     def __init__(self, sources):
-        super().__init__(
-            "novus-n1050",
-            "Gets set and measured temp data from Novus 1050 PID."
-        )
-
+        for pid in sources:
+            if pid["meta"] == "PV":
+                super().__init__(
+                    "novus-n1050-pv",
+                    "Gets set and measured temp data from Novus 1050 PID."
+                )
+            else:
+                super().__init__(
+                    "novus-n1050-sv",
+                    "Gets set and measured temp data from Novus 1050 PID."
+                )
+                 
         # Create a PicoChannel object for each Device
         self.sources = self.load_sources(sources)
 
@@ -68,7 +83,8 @@ class NovusN1050LoggerPV(object):
                  NAME=None,
                  maxi=100000000000,
                  verbosity=1):
-
+        # port name, slave address (in decimal)
+        self.instrument = minimalmodbus.Instrument('COM5', 1)
         self.name = f"PV NovusN1050 {PORT}"
         self.logger = logger
         timestamp_start = time.time()
@@ -109,7 +125,7 @@ class NovusN1050LoggerPV(object):
 
         self.logger.debug(f"Retrieving ProcessValue from Novus N1050")
         try:
-            t = instrument.read_register(1, 1)
+            t = self.instrument.read_register(1, 1)
             self.logger.debug(f"Got ProcessValue of {t} from Novus N1050")
             return t
 
@@ -126,7 +142,8 @@ class NovusN1050LoggerSV(object):
                  NAME=None,
                  maxi=100000000000,
                  verbosity=1):
-
+        # port name, slave address (in decimal)
+        self.instrument = minimalmodbus.Instrument('COM5', 1)
         self.name = f"SV NovusN1050 {PORT}"
         self.logger = logger
         timestamp_start = time.time()
@@ -166,8 +183,7 @@ class NovusN1050LoggerSV(object):
         '''
         self.logger.debug(f"Retrieving SetValue from Novus N1050")
         try:
-            t = instrument.read_register(0, 1)
-            print(t)
+            t = self.instrument.read_register(0, 1)
             self.logger.debug(f"Got SetValue of {t} from Novus N1050")
             return t
 
@@ -178,6 +194,7 @@ class NovusN1050LoggerSV(object):
 
 
 if __name__ == "__main__":
-    sources = default_config["sources"]
+    sources = pv_config["sources"]
+    sources.append(sv_config["sources"])
     controller = PluginController(sources)
     print(cyp_base.read_all(controller))
