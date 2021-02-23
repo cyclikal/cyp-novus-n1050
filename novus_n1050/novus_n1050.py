@@ -82,15 +82,11 @@ class NovusN1050LoggerPV(object):
                  PORT=None,
                  NAME=None,
                  maxi=100000000000,
-                 verbosity=1):
-        # port name, slave address (in decimal)
-        self.instrument = minimalmodbus.Instrument('COM5', 1)
-        self.name = f"PV NovusN1050 {PORT}"
-        self.logger = logger
+                 verbosity=1, delay_in_sec = 30):
+
         timestamp_start = time.time()
         date_start = datetime.datetime.fromtimestamp(timestamp_start)
-        date_start_str = date_start.strftime(TIMEFORMAT)
-
+        date_start_str = date_start.strftime(TIMEFORMAT)         
         self.options = {
             'description': 'Logfile of data. Header is JSON, data is CSV',
             'date_start': date_start_str,
@@ -106,8 +102,26 @@ class NovusN1050LoggerPV(object):
                  'unit': 'C',
                  'description': 'instantaneous setvalue in celcius'}],
             'name': NAME,
-            'verbosity': verbosity
-            }
+            'port': PORT,
+            'verbosity': verbosity,
+            'delay': delay_in_sec
+        }
+        self.read_time = 0
+        self.pv = 0
+        self.logger = logger
+        self.set_instrument()
+        self.name = f"PV NovusN1050 {PORT}"
+        
+    
+    def set_instrument(self):
+        try:
+            # port name, slave address (in decimal)
+            self.instrument = minimalmodbus.Instrument(self.options['port'], 1)
+            self.instrument.close_port_after_each_call = True
+        except Exception as e:
+            if self.options['verbosity'] > 0:
+                self.logger.error('Could not load NovusN1050 PV: %s' % e)
+                self.instrument = None
 
     def read(self):
         '''
@@ -122,34 +136,36 @@ class NovusN1050LoggerPV(object):
             temp:
                 either a float or a dict of floats
         '''
-
         self.logger.debug(f"Retrieving ProcessValue from Novus N1050")
-        try:
-            t = self.instrument.read_register(1, 1)
-            self.logger.debug(f"Got ProcessValue of {t} from Novus N1050")
-            return t
+        
+        if (time.time() - self.read_time) >= self.options['delay']:
+            try:
+                self.pv = self.instrument.read_register(1, 0)
+                self.logger.debug(f"Got ProcessValue of {self.pv} from Novus N1050")
+                self.read_time = time.time()
+                return self.pv
 
-        except Exception as e:
-            if self.options['verbosity'] > 0:
-                self.logger.error('Could not get NovusN1050 PV data: %s' % e)
-                return None
+            except Exception as e:
+                if self.options['verbosity'] > 0:
+                    self.logger.error('Could not get NovusN1050 data: %s' % e)
+                    return None
+        else:
+            self.logger.debug(f"Got ProcessValue of {self.pv} from Novus N1050 less than {self.options['delay']} seconds ago")
+            return self.pv
 
 class NovusN1050LoggerSV(object):
     def __init__(self,
-                 logger,
+                 logger, 
                  TIMEFORMAT='%Y-%m-%d %H:%M:%S.%f',
                  PORT=None,
                  NAME=None,
                  maxi=100000000000,
-                 verbosity=1):
-        # port name, slave address (in decimal)
-        self.instrument = minimalmodbus.Instrument('COM5', 1)
-        self.name = f"SV NovusN1050 {PORT}"
-        self.logger = logger
+                 verbosity=1,
+                 delay_in_sec = 30):
+        
         timestamp_start = time.time()
         date_start = datetime.datetime.fromtimestamp(timestamp_start)
         date_start_str = date_start.strftime(TIMEFORMAT)
-
         self.options = {
             'description': 'Logfile of data. Header is JSON, data is CSV',
             'date_start': date_start_str,
@@ -165,8 +181,26 @@ class NovusN1050LoggerSV(object):
                  'unit': 'C',
                  'description': 'instantaneous setvalue in celcius'}],
             'name': NAME,
-            'verbosity': verbosity
-            }
+            'port': PORT,
+            'verbosity': verbosity,
+            'delay': delay_in_sec,
+        }
+        self.read_time = 0
+        self.sv = 0
+        self.logger = logger
+        self.set_instrument()
+        self.name = f"SV NovusN1050 {PORT}"
+        
+
+    def set_instrument(self):
+        try:
+            # port name, slave address (in decimal)
+            self.instrument = minimalmodbus.Instrument(self.options['port'], 1)
+            self.instrument.close_port_after_each_call = True
+        except Exception as e:
+            if self.options['verbosity'] > 0:
+                self.logger.error('Could not load NovusN1050 SV: %s' % e)
+                self.instrument = None
 
     def read(self):
         '''
@@ -182,15 +216,23 @@ class NovusN1050LoggerSV(object):
                 either a float or a dict of floats
         '''
         self.logger.debug(f"Retrieving SetValue from Novus N1050")
-        try:
-            t = self.instrument.read_register(0, 1)
-            self.logger.debug(f"Got SetValue of {t} from Novus N1050")
-            return t
+        if self.instrument == None:
+            self.set_instrument()
+        
+        if (time.time() - self.read_time) >= self.options['delay']:
+            try:
+                self.sv = self.instrument.read_register(0, 1)
+                self.logger.debug(f"Got SetValue of {self.sv} from Novus N1050")
+                self.read_time = time.time()
+                return self.sv
 
-        except Exception as e:
-            if self.options['verbosity'] > 0:
-                self.logger.error('Could not get NovusN1050 data: %s' % e)
-                return None
+            except Exception as e:
+                if self.options['verbosity'] > 0:
+                    self.logger.error('Could not get NovusN1050 data: %s' % e)
+                    return None
+        else:
+            self.logger.debug(f"Got SetValue of {self.sv} from Novus N1050 less than {self.options['delay']} seconds ago")
+            return self.sv
 
 
 if __name__ == "__main__":
